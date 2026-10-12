@@ -1,0 +1,72 @@
+name: Azure CostGraph Plan
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_USE_OIDC: true
+  ARM_SKIP_PROVIDER_REGISTRATION: true
+  TF_IN_AUTOMATION: true
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan and Cost Review
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/azure-vm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Export Terraform Plan JSON
+        run: terraform show -json tfplan > plan.json
+
+      - name: Review Infrastructure Cost
+        uses: baselinehq/costgraph-action@v1
+        with:
+          api-key: ${{ secrets.COSTGRAPH_API_KEY }}
+          plan-path: terraform/azure-vm/plan.json
+          artifact-name: azure-vm-cost-estimate
+
+      - name: Upload Terraform Plan JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-json
+          path: terraform/azure-vm/plan.json
