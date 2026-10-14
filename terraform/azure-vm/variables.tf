@@ -19,7 +19,7 @@ variable "vm_name" {
 variable "vm_size" {
   description = "Azure VM SKU to estimate."
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_D2s_v5"
 }
 
 variable "admin_username" {
