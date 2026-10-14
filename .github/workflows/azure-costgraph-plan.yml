@@ -59,7 +59,7 @@ jobs:
         run: terraform show -json tfplan > plan.json
 
       - name: Review Infrastructure Cost
-        uses: baselinehq/costgraph-action@v1
+        uses: baselinehq/costgraph-action/terraform-cost@v0
         with:
           api-key: ${{ secrets.COSTGRAPH_API_KEY }}
           plan-path: terraform/azure-vm/plan.json
